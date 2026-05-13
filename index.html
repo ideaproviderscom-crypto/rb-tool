@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>セラーリサーチシート</title>
+<style>
+/* ── リセット・基本 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f13; color: #e0e0e0; min-height: 100vh; font-size: 14px; }
+
+/* ── メイン ── */
+#mainApp { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* ── ヘッダー ── */
+header {
+  background: #16161f; border-bottom: 1px solid #2a2a38;
+  padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.8rem;
+  flex-shrink: 0;
+}
+header h1 { font-size: 1rem; color: #fff; white-space: nowrap; font-weight: 600; }
+#syncStatus { font-size: 0.65rem; color: #4caf50; }
+header .spacer { flex: 1; }
+.hdr-btn {
+  font-size: 0.75rem; padding: 0.3rem 0.75rem; border-radius: 6px;
+  border: 1px solid #3a3a50; background: #1e1e2e; color: #ccc; cursor: pointer;
+  white-space: nowrap;
+}
+.hdr-btn:hover { background: #2a2a3e; }
+.hdr-btn.primary { background: #2d4a8a; border-color: #3d5a9a; color: #9bb8ff; }
+.hdr-btn.primary:hover { background: #3a5aa0; }
+
+/* ── タブバー ── */
+#tabBar {
+  background: #12121a; border-bottom: 1px solid #2a2a38;
+  display: flex; align-items: stretch; overflow-x: auto; flex-shrink: 0;
+  scrollbar-width: none;
+}
+#tabBar::-webkit-scrollbar { display: none; }
+.tab-btn {
+  padding: 0.55rem 1rem; font-size: 0.82rem; color: #888; cursor: pointer;
+  border-bottom: 2px solid transparent; white-space: nowrap;
+  border-right: 1px solid #1e1e2a; flex-shrink: 0;
+  display: flex; align-items: center; gap: 0.4rem;
+  background: none; border-top: none; border-left: none;
+  transition: color 0.15s, background 0.15s;
+}
+.tab-btn:hover { color: #ccc; background: #1a1a25; }
+.tab-btn.active { color: #7aadff; border-bottom-color: #5b8cf5; background: #16161f; }
+.tab-btn.seller-reg { color: #a0e0a0; }
+.tab-btn.seller-reg.active { color: #6ddb6d; border-bottom-color: #4caf50; }
+.tab-rename-input {
+  background: #1e1e2e; color: #fff; border: 1px solid #5b8cf5; border-radius: 4px;
+  padding: 0.15rem 0.4rem; font-size: 0.82rem; width: 100px; outline: none;
+}
+.tab-close {
+  font-size: 0.7rem; color: #555; cursor: pointer; padding: 0 0.1rem;
+  line-height: 1;
+}
+.tab-close:hover { color: #f87171; }
+#addTabBtn {
+  padding: 0.55rem 0.8rem; font-size: 0.9rem; color: #555; cursor: pointer;
+  background: none; border: none; flex-shrink: 0;
+}
+#addTabBtn:hover { color: #aaa; }
+
+/* ── コンテンツ ── */
+#contentArea { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ── テーブル共通 ── */
+.table-wrap { flex: 1; overflow: auto; padding: 0.8rem; }
+.data-table {
+  width: 100%; border-collapse: collapse; font-size: 0.82rem;
+  min-width: 1100px;
+}
+.data-table th {
+  background: #1a1a26; color: #8899bb; font-weight: 600; font-size: 0.75rem;
+  padding: 0.5rem 0.6rem; text-align: left; letter-spacing: 0.03em;
+  border-bottom: 2px solid #2a2a3a; white-space: nowrap; position: sticky; top: 0;
+  z-index: 1;
+}
+.data-table td {
+  padding: 0.45rem 0.6rem; border-bottom: 1px solid #1e1e2a;
+  vertical-align: middle;
+}
+.data-table tr:hover td { background: #16161f; }
+
+/* ── セラー登録テーブル ── */
+.seller-table td input {
+  background: transparent; border: none; color: #e0e0e0;
+  font-size: 0.82rem; width: 100%; outline: none;
+  padding: 0.1rem 0;
+}
+.seller-table td input:focus {
+  background: #1e1e2e; border-radius: 4px; padding: 0.1rem 0.4rem;
+}
+.attr-select {
+  background: #1a1a26; border: 1px solid #2a2a3a; color: #e0e0e0;
+  font-size: 0.8rem; border-radius: 4px; padding: 0.2rem 0.4rem;
+  cursor: pointer; outline: none;
+}
+.attr-select:focus { border-color: #5b8cf5; }
+.row-num { color: #555; font-size: 0.75rem; text-align: center; width: 32px; }
+.del-btn {
+  background: none; border: none; color: #555; cursor: pointer; font-size: 1rem;
+  padding: 0.1rem 0.3rem;
+}
+.del-btn:hover { color: #f87171; }
+.add-row-wrap { padding: 0.5rem 0.8rem; }
+.add-row-btn {
+  font-size: 0.8rem; color: #5b8cf5; cursor: pointer; background: none; border: none;
+  padding: 0.3rem 0;
+}
+.add-row-btn:hover { color: #7aadff; }
+
+/* ── 属性タブ テーブル ── */
+.asin-img { width: 80px; height: 80px; object-fit: contain; border-radius: 4px; background: #1a1a26; }
+.asin-img-placeholder { width: 80px; height: 80px; background: #1a1a26; border-radius: 4px; }
+.product-title {
+  font-size: 0.75rem; color: #aaa; max-width: 180px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: inline-block; vertical-align: middle;
+}
+.keepa-fetch-status {
+  font-size: 0.72rem; color: #888; margin-left: 0.3rem;
+}
+.refresh-btn {
+  font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px;
+  border: 1px solid #3a3a50; background: #1e1e2e; color: #aaa;
+  cursor: pointer; white-space: nowrap;
+}
+.refresh-btn:hover { background: #2a2a3e; color: #ccc; }
+.keepa-btn {
+  font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px;
+  border: 1px solid #3a3a50; background: #1e1e2e; color: #9bb8ff;
+  cursor: pointer; text-decoration: none; white-space: nowrap; display: inline-block;
+}
+.keepa-btn:hover { background: #2a2a3e; }
+.keepa-graph-link { display: inline-block; line-height: 0; }
+.keepa-graph-img {
+  width: 300px; height: 150px; border-radius: 4px;
+  border: 1px solid #2a2a3a; object-fit: cover;
+  transition: opacity 0.15s;
+}
+.keepa-graph-img:hover { opacity: 0.8; }
+.keepa-graph-err {
+  font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px;
+  border: 1px solid #3a3a50; background: #1e1e2e; color: #9bb8ff;
+  text-decoration: none; white-space: nowrap; display: inline-block;
+}
+.asin-link { color: #7aadff; text-decoration: none; font-family: monospace; font-size: 0.8rem; }
+.asin-link:hover { text-decoration: underline; }
+.chance-row td { background: rgba(255,220,50,0.06); }
+.chance-asin { color: #ffd700; font-family: monospace; font-size: 0.8rem; }
+.appear-count {
+  display: inline-block; background: #2a2a3a; border-radius: 10px;
+  padding: 0.1rem 0.5rem; font-size: 0.78rem; color: #aaa; min-width: 24px;
+  text-align: center;
+}
+.appear-count.high { background: #3a2a10; color: #ffd700; }
+.empty-state {
+  padding: 3rem; text-align: center; color: #444; font-size: 0.9rem;
+}
+.empty-state span { display: block; font-size: 2rem; margin-bottom: 0.8rem; }
+
+/* ── 過去セッション列 ── */
+.past-col { color: #666; font-family: monospace; font-size: 0.78rem; }
+.past-col a { color: #5577aa; text-decoration: none; }
+.past-col a:hover { color: #7aadff; text-decoration: underline; }
+.col-sep { border-left: 1px solid #2a2a3a; }
+
+/* ── セラー登録 追加フォーム ── */
+.seller-add-bar {
+  padding: 0.6rem 0.8rem; background: #12121a; border-bottom: 1px solid #1e1e2a;
+  display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; flex-wrap: wrap;
+}
+.seller-add-bar input, .seller-add-bar select {
+  background: #1a1a26; border: 1px solid #2a2a3a; color: #e0e0e0;
+  border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.82rem; outline: none;
+}
+.seller-add-bar input:focus, .seller-add-bar select:focus { border-color: #5b8cf5; }
+.seller-add-bar input.id-input { width: 180px; font-family: monospace; }
+.seller-add-bar input.name-input { width: 150px; }
+.seller-add-bar select.attr-input { width: 140px; }
+.seller-add-bar input.note-input { width: 200px; }
+.seller-add-bar .add-confirm-btn {
+  padding: 0.35rem 0.9rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer;
+  background: #2d4a8a; border: 1px solid #3d5a9a; color: #9bb8ff; white-space: nowrap;
+}
+.seller-add-bar .add-confirm-btn:hover { background: #3a5aa0; }
+
+/* ── 属性タブ ヘッダー操作 ── */
+.attr-tab-header {
+  padding: 0.6rem 0.8rem; background: #12121a; border-bottom: 1px solid #1e1e2a;
+  display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; flex-wrap: wrap;
+}
+.attr-tab-header .attr-label {
+  font-size: 0.78rem; color: #666; margin-right: 0.3rem;
+}
+.seller-count-badge {
+  background: #1e1e2e; border: 1px solid #2a2a3a; border-radius: 12px;
+  padding: 0.15rem 0.6rem; font-size: 0.75rem; color: #777;
+}
+
+/* ── スクロール ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0f0f13; }
+::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a4a; }
+
+/* ── 列コピーボタン ── */
+.col-copy-btn {
+  font-size: 0.62rem; padding: 0.1rem 0.4rem; border-radius: 4px;
+  border: 1px solid #3a3a50; background: #1e1e2e; color: #888; cursor: pointer;
+  margin-top: 0.2rem; white-space: nowrap;
+}
+.col-copy-btn:hover { background: #2a2a3e; color: #ccc; }
+
+/* ── 設定モーダル ── */
+.settings-row {
+  display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.8rem;
+}
+.settings-row label { font-size: 0.78rem; color: #888; }
+.settings-row input {
+  width: 100%; background: #0f0f13; border: 1px solid #2a2a3a; color: #e0e0e0;
+  border-radius: 6px; padding: 0.5rem 0.7rem; font-size: 0.85rem; outline: none;
+  font-family: monospace;
+}
+.settings-row input:focus { border-color: #5b8cf5; }
+.settings-hint { font-size: 0.75rem; color: #555; margin-top: 0.2rem; }
+
+/* ── データ管理セクション ── */
+.data-mgmt-section {
+  border-top: 1px solid #2a2a3a; margin-top: 0.8rem; padding-top: 0.8rem;
+}
+.data-mgmt-section h4 { font-size: 0.82rem; color: #888; margin-bottom: 0.6rem; }
+.data-mgmt-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.data-mgmt-btn {
+  padding: 0.4rem 0.9rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer;
+  border: 1px solid #2a2a3a; white-space: nowrap;
+}
+.btn-export { background: #1a2a1a; border-color: #2a4a2a; color: #6ddb6d; }
+.btn-export:hover { background: #1e3a1e; }
+.btn-import { background: #1a1a2e; border-color: #2a2a5a; color: #7aadff; }
+.btn-import:hover { background: #1e1e3e; }
+#importFileInput { display: none; }
+#dataStatusMsg { font-size: 0.75rem; color: #888; margin-top: 0.4rem; min-height: 1.2em; }
+
+/* ── モーダル ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: #1a1a26; border: 1px solid #2a2a3a; border-radius: 12px;
+  padding: 1.5rem; width: 360px; max-width: 90vw;
+}
+.modal-box h3 { font-size: 1rem; color: #fff; margin-bottom: 1rem; }
+.modal-box input, .modal-box select {
+  width: 100%; background: #0f0f13; border: 1px solid #2a2a3a; color: #e0e0e0;
+  border-radius: 6px; padding: 0.5rem 0.7rem; font-size: 0.9rem; outline: none;
+  margin-bottom: 0.8rem;
+}
+.modal-box input:focus, .modal-box select:focus { border-color: #5b8cf5; }
+.modal-btns { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 0.5rem; }
+.modal-btns button {
+  padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer;
+  border: 1px solid #2a2a3a;
+}
+.btn-cancel { background: #1e1e2e; color: #aaa; }
+.btn-ok { background: #2d4a8a; border-color: #3d5a9a; color: #9bb8ff; }
+.btn-ok:hover { background: #3a5aa0; }
+.btn-danger { background: #4a1a1a; border-color: #6a2a2a; color: #f87171; }
+.btn-danger:hover { background: #5a2020; }
+</style>
+</head>
+<body>
+
+<!-- メインアプリ -->
+<div id="mainApp">
+  <header>
+    <h1>セラーリサーチシート</h1>
+    <div class="spacer"></div>
+    <button class="hdr-btn" onclick="openSettings()">設定</button>
+    <button class="hdr-btn" onclick="openAttrMgr()">属性管理</button>
+  </header>
+
+  <!-- タブバー -->
+  <div id="tabBar">
+    <!-- JS生成 -->
+    <button id="addTabBtn" onclick="addAttrTab()" title="属性タブを追加">＋</button>
+  </div>
+
+  <!-- コンテンツ -->
+  <div id="contentArea">
+    <!-- JS生成 -->
+  </div>
+</div>
+
+<!-- 設定モーダル -->
+<div class="modal-overlay hidden" id="settingsModal">
+  <div class="modal-box" style="width:440px;">
+    <h3>設定</h3>
+    <div class="settings-row">
+      <label>Keepa Private Access Key</label>
+      <input type="text" id="keepaApiKeyInput" placeholder="keepa api keyを入力...">
+      <div class="settings-hint">Keepa.comのプロフィール画面から取得できます。localStorageに保存されます（HTMLには埋め込みません）。</div>
+    </div>
+    <div id="keepaTestResult" style="font-size:0.8rem;min-height:1.4em;margin-bottom:0.4rem;"></div>
+
+    <!-- データ管理 -->
+    <div class="data-mgmt-section">
+      <h4>データ管理</h4>
+      <div class="data-mgmt-btns">
+        <button class="data-mgmt-btn btn-export" onclick="exportData()">データエクスポート</button>
+        <button class="data-mgmt-btn btn-import" onclick="document.getElementById('importFileInput').click()">データインポート</button>
+        <input type="file" id="importFileInput" accept=".json" onchange="importData(this)">
+      </div>
+      <div id="dataStatusMsg"></div>
+    </div>
+
+    <div class="modal-btns" style="margin-top:1rem;">
+      <button class="btn-cancel" onclick="testKeepaKey()" style="background:#1a2a1a;border-color:#2a4a2a;color:#6ddb6d;">接続テスト</button>
+      <button class="btn-cancel" onclick="closeSettings()">閉じる</button>
+      <button class="btn-ok" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 属性管理モーダル -->
+<div class="modal-overlay hidden" id="attrMgrModal">
+  <div class="modal-box">
+    <h3>属性管理</h3>
+    <div id="attrMgrList" style="margin-bottom:0.8rem;"></div>
+    <input type="text" id="newAttrInput" placeholder="新しい属性名を入力..." style="margin-bottom:0;">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeAttrMgr()">閉じる</button>
+      <button class="btn-ok" onclick="addAttr()">追加</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 定数 ──
+const STORE_KEY = 'rb_v2';
+const SETTINGS_KEY = 'rb_settings_v1';
+const IDB_NAME = 'rb_tool_db';
+const IDB_STORE = 'appdata';
+const IDB_KEY = 'main';
+
+// ── IndexedDB ──
+let idb = null;
+
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    if (idb) { resolve(idb); return; }
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = (e) => { idb = e.target.result; resolve(idb); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGet(key) {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+  } catch(e) { return null; }
+}
+
+async function idbSet(key, value) {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(value, key);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch(e) { return false; }
+}
+
+// ── 設定 ──
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { keepaApiKey: '' };
+}
+
+function saveSettingsData(s) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
+function openSettings() {
+  const s = loadSettings();
+  document.getElementById('keepaApiKeyInput').value = s.keepaApiKey || '';
+  document.getElementById('keepaTestResult').textContent = '';
+  document.getElementById('dataStatusMsg').textContent = '';
+  document.getElementById('settingsModal').classList.remove('hidden');
+  document.getElementById('keepaApiKeyInput').focus();
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.add('hidden');
+}
+
+function saveSettings() {
+  const key = document.getElementById('keepaApiKeyInput').value.trim();
+  saveSettingsData({ keepaApiKey: key });
+  closeSettings();
+}
+
+// ── Keepa API ──
+async function fetchKeepaData(asin) {
+  const s = loadSettings();
+  const key = s.keepaApiKey;
+  if (!key) return { error: 'APIキー未設定' };
+  try {
+    const url = `https://api.keepa.com/product?key=${encodeURIComponent(key)}&domain=5&asin=${asin}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errBody = await res.json();
+        if (errBody.error && errBody.error.type) errMsg = errBody.error.type;
+      } catch(_) {}
+      return { error: errMsg };
+    }
+    const json = await res.json();
+    const p = json.products && json.products[0];
+    if (!p) return { error: '商品データなし' };
+    const newSellerCount = null;
+    const title = p.title || null;
+    let imageUrl = null;
+    if (p.imagesCSV) {
+      const firstImageId = p.imagesCSV.split(',')[0];
+      if (firstImageId) imageUrl = `https://m.media-amazon.com/images/I/${firstImageId}._SL200_.jpg`;
+    }
+    return { newSellerCount, title, imageUrl };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+async function testKeepaKey() {
+  const key = document.getElementById('keepaApiKeyInput').value.trim();
+  const resultEl = document.getElementById('keepaTestResult');
+  if (!key) { resultEl.textContent = 'APIキーを入力してください'; resultEl.style.color = '#f87171'; return; }
+  resultEl.textContent = 'テスト中…'; resultEl.style.color = '#aaa';
+  try {
+    const url = `https://api.keepa.com/product?key=${encodeURIComponent(key)}&domain=5&asin=B00DHF9GUQ&stats=1`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      const tokensLeft = json.tokensLeft !== undefined ? json.tokensLeft : '?';
+      resultEl.textContent = `接続OK（残トークン: ${tokensLeft}）`;
+      resultEl.style.color = '#6ddb6d';
+    } else {
+      let errMsg = `HTTP ${res.status}`;
+      try { const b = await res.json(); if (b.error && b.error.type) errMsg = b.error.type; } catch(_) {}
+      resultEl.textContent = `失敗: ${errMsg}`;
+      resultEl.style.color = '#f87171';
+    }
+  } catch(e) {
+    resultEl.textContent = `エラー: ${e.message}`;
+    resultEl.style.color = '#f87171';
+  }
+}
+
+// ── エクスポート / インポート ──
+function exportData() {
+  const d = loadData();
+  const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '');
+  a.href = url;
+  a.download = `rb_tool_backup_${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  const msg = document.getElementById('dataStatusMsg');
+  if (msg) { msg.textContent = 'エクスポート完了'; msg.style.color = '#6ddb6d'; }
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const msg = document.getElementById('dataStatusMsg');
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const d = JSON.parse(e.target.result);
+      if (!d.seeded) throw new Error('seededフラグがありません（正しいバックアップファイルではない可能性があります）');
+      if (!Array.isArray(d.attrs)) throw new Error('attrsが不正です');
+      // マイグレーション
+      if (!d.sessions) d.sessions = {};
+      if (!d.keepaCache) d.keepaCache = {};
+      d.lastModified = Date.now();
+      await persistData(d);
+      renderAll();
+      if (msg) { msg.textContent = `インポート完了（セラー${(d.sellers||[]).length}件）`; msg.style.color = '#6ddb6d'; }
+    } catch(ex) {
+      if (msg) { msg.textContent = `インポート失敗: ${ex.message}`; msg.style.color = '#f87171'; }
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── ストアフロント取得 ──
+async function fetchSellerStorefront(sellerId) {
+  const s = loadSettings();
+  const key = s.keepaApiKey;
+  if (!key) return { error: 'APIキー未設定' };
+  try {
+    const url = `https://api.keepa.com/seller?key=${encodeURIComponent(key)}&domain=5&seller=${encodeURIComponent(sellerId)}&storefront=1`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try { const b = await res.json(); if (b.error && b.error.type) errMsg = b.error.type; } catch(_) {}
+      return { error: errMsg };
+    }
+    const json = await res.json();
+    const sellerData = json.sellers && json.sellers[sellerId];
+    if (!sellerData) return { error: 'セラーデータなし' };
+    const asinList = sellerData.asinList || [];
+    return { asinList };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+// ── セラー一括取得 ──
+async function fetchAllSellersForAttr(attr) {
+  const s = loadSettings();
+  if (!s.keepaApiKey) {
+    alert('KeepaのAPIキーが設定されていません。\nヘッダーの「設定」から入力してください。');
+    return;
+  }
+  const d = loadData();
+  const sellers = d.sellers.filter(sel => sel.attr === attr && sel.sellerId);
+  if (sellers.length === 0) {
+    alert('このタブに登録されているセラーがいません。\n「セラー登録」タブでセラーを追加してください。');
+    return;
+  }
+
+  const badge = document.getElementById(`sellerFetchBadge_${sanitizeId(attr)}`);
+  if (badge) { badge.textContent = '取得中…'; badge.style.color = '#aaa'; }
+
+  const newAsinSet = new Set();
+  let errCount = 0;
+
+  for (let i = 0; i < sellers.length; i++) {
+    const seller = sellers[i];
+    if (badge) { badge.textContent = `取得中… (${i+1}/${sellers.length}) ${seller.name || seller.sellerId}`; }
+
+    const result = await fetchSellerStorefront(seller.sellerId);
+    if (result.error) {
+      console.warn('[Storefront] error for', seller.sellerId, result.error);
+      errCount++;
+    } else {
+      for (const asin of result.asinList) {
+        if (/^[A-Z0-9]{10}$/.test(asin)) newAsinSet.add(asin);
+      }
+    }
+
+    if (i < sellers.length - 1) await new Promise(r => setTimeout(r, 800));
+  }
+
+  const newSession = Array.from(newAsinSet).map(asin => ({ asin }));
+
+  const d2 = loadData();
+  if (!d2.sessions) d2.sessions = {};
+  const prevSessions = d2.sessions[attr] || [];
+  const updated = [newSession, ...prevSessions].slice(0, 4);
+  d2.sessions[attr] = updated;
+
+  if (!d2.keepaCache) d2.keepaCache = {};
+  for (const item of newSession) {
+    const cached = d2.keepaCache[item.asin];
+    if (cached) {
+      if (cached.title) item.title = cached.title;
+      if (cached.newSellerCount !== undefined) item.newSellerCount = cached.newSellerCount;
+      if (cached.imageUrl) item.imageUrl = cached.imageUrl;
+    }
+  }
+
+  await saveData(d2);
+  renderAttrRows(attr);
+
+  if (badge) {
+    const msg = `完了（新規ASIN: ${newSession.length}件${errCount > 0 ? ` / エラー: ${errCount}` : ''}）`;
+    badge.textContent = msg;
+    badge.style.color = '#4caf50';
+  }
+}
+
+// ── Keepa一括更新 ──
+async function refreshAllKeepa(attr) {
+  const d = loadData();
+  const sessions = d.sessions && d.sessions[attr];
+  if (!sessions || sessions.length === 0 || sessions[0].length === 0) {
+    alert('最新セッションにASINがありません。先に「セラー一括取得」を実行してください。');
+    return;
+  }
+  const s = loadSettings();
+  if (!s.keepaApiKey) {
+    alert('KeepaのAPIキーが設定されていません。\nヘッダーの「設定」から入力してください。');
+    return;
+  }
+
+  const badge = document.getElementById(`sellerFetchBadge_${sanitizeId(attr)}`);
+  if (badge) { badge.textContent = 'Keepa更新中…'; badge.style.color = '#aaa'; }
+
+  const currentSession = sessions[0];
+  for (let i = 0; i < currentSession.length; i++) {
+    const item = currentSession[i];
+    if (!item.asin) continue;
+    if (badge) { badge.textContent = `Keepa更新中… (${i+1}/${currentSession.length})`; }
+
+    const result = await fetchKeepaData(item.asin);
+    if (!result.error) {
+      const d2 = loadData();
+      if (d2.sessions && d2.sessions[attr] && d2.sessions[attr][0] && d2.sessions[attr][0][i]) {
+        const target = d2.sessions[attr][0][i];
+        if (result.newSellerCount !== null) target.newSellerCount = result.newSellerCount;
+        if (result.title) target.title = result.title;
+        if (result.imageUrl) target.imageUrl = result.imageUrl;
+        if (!d2.keepaCache) d2.keepaCache = {};
+        d2.keepaCache[item.asin] = {
+          title: result.title || target.title,
+          newSellerCount: result.newSellerCount !== null ? result.newSellerCount : target.newSellerCount,
+          imageUrl: result.imageUrl || target.imageUrl
+        };
+        await saveData(d2);
+      }
+    }
+    if (i < currentSession.length - 1) await new Promise(r => setTimeout(r, 1200));
+  }
+
+  renderAttrRows(attr);
+  if (badge) { badge.textContent = 'Keepa更新完了'; badge.style.color = '#4caf50'; }
+}
+
+// ── 出現回数 ──
+function calcAppearCount(asin, sessions) {
+  let count = 0;
+  for (let i = 0; i < Math.min(sessions.length, 4); i++) {
+    const sess = sessions[i];
+    if (sess && sess.some(item => item.asin === asin)) count++;
+  }
+  return count;
+}
+
+// ── データ構造 ──
+function defaultData() {
+  return {
+    seeded: true,
+    lastModified: Date.now(),
+    attrs: ['アパレル', 'トレンド', '電脳リピート', '廃版仕込み'],
+    sellers: [],
+    sessions: {},
+    keepaCache: {}
+  };
+}
+
+// ── データ読み込み（IndexedDB → localStorage の順で優先） ──
+let _dataCache = null;
+
+async function loadDataAsync() {
+  // IndexedDB から取得
+  const idbData = await idbGet(IDB_KEY);
+  const lsRaw = localStorage.getItem(STORE_KEY);
+  let lsData = null;
+  try { if (lsRaw) lsData = JSON.parse(lsRaw); } catch(e) {}
+
+  let best = null;
+  if (idbData && lsData) {
+    // より新しい方を採用
+    best = ((idbData.lastModified || 0) >= (lsData.lastModified || 0)) ? idbData : lsData;
+  } else {
+    best = idbData || lsData;
+  }
+
+  if (!best || !best.seeded) best = defaultData();
+  if (!best.sessions) best.sessions = {};
+  if (!best.keepaCache) best.keepaCache = {};
+
+  _dataCache = best;
+  return best;
+}
+
+// 同期的に読む（_dataCache があればそれを返す）
+function loadData() {
+  if (_dataCache) return _dataCache;
+  // キャッシュがまだなければ localStorage から
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (!d.sessions) d.sessions = {};
+      if (!d.keepaCache) d.keepaCache = {};
+      _dataCache = d;
+      return d;
+    }
+  } catch(e) {}
+  _dataCache = defaultData();
+  return _dataCache;
+}
+
+// データを localStorage + IndexedDB に並列保存
+async function persistData(d) {
+  _dataCache = d;
+  localStorage.setItem(STORE_KEY, JSON.stringify(d));
+  await idbSet(IDB_KEY, d);
+}
+
+async function saveData(d) {
+  d.lastModified = Date.now();
+  await persistData(d);
+}
+
+// ── タブ状態 ──
+let currentTab = 'sellers';
+
+// ── 初期化（非同期） ──
+async function init() {
+  // IndexedDB から最新データを読み込んでから描画
+  await loadDataAsync();
+  renderTabs();
+  showTab(currentTab);
+}
+
+// ── タブ描画 ──
+function renderTabs() {
+  const d = loadData();
+  const bar = document.getElementById('tabBar');
+  const addBtn = document.getElementById('addTabBtn');
+
+  bar.querySelectorAll('.tab-btn').forEach(b => b.remove());
+
+  const sellerBtn = document.createElement('button');
+  sellerBtn.className = 'tab-btn seller-reg' + (currentTab === 'sellers' ? ' active' : '');
+  sellerBtn.textContent = 'セラー登録';
+  sellerBtn.onclick = () => showTab('sellers');
+  bar.insertBefore(sellerBtn, addBtn);
+
+  d.attrs.forEach(attr => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (currentTab === attr ? ' active' : '');
+    btn.dataset.attr = attr;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = attr;
+    nameSpan.ondblclick = (e) => { e.stopPropagation(); startRenameTab(btn, attr); };
+    btn.appendChild(nameSpan);
+
+    const closeX = document.createElement('span');
+    closeX.className = 'tab-close';
+    closeX.textContent = '×';
+    closeX.title = 'このタブを削除';
+    closeX.onclick = (e) => { e.stopPropagation(); confirmDeleteTab(attr); };
+    btn.appendChild(closeX);
+
+    btn.onclick = () => showTab(attr);
+    bar.insertBefore(btn, addBtn);
+  });
+}
+
+function startRenameTab(btn, oldAttr) {
+  const input = document.createElement('input');
+  input.className = 'tab-rename-input';
+  input.value = oldAttr;
+  btn.innerHTML = '';
+  btn.appendChild(input);
+  input.focus();
+  input.select();
+
+  const finish = () => {
+    const newName = input.value.trim();
+    if (newName && newName !== oldAttr) {
+      renameAttr(oldAttr, newName);
+    } else {
+      renderTabs();
+    }
+  };
+  input.onblur = finish;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') finish();
+    if (e.key === 'Escape') renderTabs();
+    e.stopPropagation();
+  };
+}
+
+async function confirmDeleteTab(attr) {
+  if (!confirm(`「${attr}」タブを削除しますか？\n（このタブのデータも削除されます）`)) return;
+  const d = loadData();
+  d.attrs = d.attrs.filter(a => a !== attr);
+  delete d.sessions[attr];
+  if (currentTab === attr) currentTab = 'sellers';
+  await saveData(d);
+  renderTabs();
+  showTab(currentTab);
+}
+
+async function addAttrTab() {
+  const name = prompt('新しい属性名を入力:');
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+  const d = loadData();
+  if (d.attrs.includes(trimmed)) { alert('すでに存在する属性名です'); return; }
+  d.attrs.push(trimmed);
+  await saveData(d);
+  currentTab = trimmed;
+  renderTabs();
+  showTab(trimmed);
+}
+
+async function renameAttr(oldName, newName) {
+  const d = loadData();
+  if (d.attrs.includes(newName)) { alert('すでに存在する属性名です'); renderTabs(); return; }
+  const idx = d.attrs.indexOf(oldName);
+  if (idx >= 0) d.attrs[idx] = newName;
+  if (d.sessions[oldName]) {
+    d.sessions[newName] = d.sessions[oldName];
+    delete d.sessions[oldName];
+  }
+  d.sellers.forEach(s => { if (s.attr === oldName) s.attr = newName; });
+  if (currentTab === oldName) currentTab = newName;
+  await saveData(d);
+  renderTabs();
+  showTab(currentTab);
+}
+
+// ── タブ表示切替 ──
+function showTab(tabName) {
+  currentTab = tabName;
+  renderTabs();
+  const area = document.getElementById('contentArea');
+  area.innerHTML = '';
+
+  if (tabName === 'sellers') {
+    area.appendChild(buildSellerTab());
+  } else {
+    area.appendChild(buildAttrTab(tabName));
+  }
+}
+
+// ── セラー登録タブ ──
+function buildSellerTab() {
+  const d = loadData();
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;';
+
+  const addBar = document.createElement('div');
+  addBar.className = 'seller-add-bar';
+  addBar.innerHTML = `
+    <span style="font-size:0.78rem;color:#666;white-space:nowrap;">追加：</span>
+    <input class="id-input" id="newSellerId" type="text" placeholder="セラーID（A1XXXXX...）" maxlength="32">
+    <input class="name-input" id="newSellerName" type="text" placeholder="セラー名">
+    ${buildAttrSelectNew(d.attrs, 'newSellerAttr')}
+    <input class="note-input" id="newSellerNote" type="text" placeholder="備考（任意）">
+    <button class="add-confirm-btn" onclick="addSellerRowFromBar()">追加</button>
+  `;
+  wrap.appendChild(addBar);
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'table-wrap';
+
+  const table = document.createElement('table');
+  table.className = 'data-table seller-table';
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th style="width:32px;">#</th>
+        <th style="width:180px;">セラーID</th>
+        <th style="width:160px;">セラー名</th>
+        <th style="width:140px;">セラー属性</th>
+        <th>備考</th>
+        <th style="width:36px;"></th>
+      </tr>
+    </thead>
+    <tbody id="sellerTbody"></tbody>
+  `;
+  tableWrap.appendChild(table);
+  wrap.appendChild(tableWrap);
+
+  setTimeout(() => {
+    renderSellerRows(d);
+    const idInput = document.getElementById('newSellerId');
+    if (idInput) idInput.addEventListener('keydown', e => { if (e.key === 'Enter') addSellerRowFromBar(); });
+    const nameInput = document.getElementById('newSellerName');
+    if (nameInput) nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') addSellerRowFromBar(); });
+  }, 0);
+
+  return wrap;
+}
+
+function buildAttrSelectNew(attrs, id) {
+  const opts = ['', ...attrs].map(a =>
+    `<option value="${esc(a)}">${a || '（属性未設定）'}</option>`
+  ).join('');
+  return `<select class="attr-input" id="${id}">${opts}</select>`;
+}
+
+async function addSellerRowFromBar() {
+  const idEl = document.getElementById('newSellerId');
+  const nameEl = document.getElementById('newSellerName');
+  const attrEl = document.getElementById('newSellerAttr');
+  const noteEl = document.getElementById('newSellerNote');
+  if (!idEl) return;
+  const sellerId = idEl.value.trim();
+  if (!sellerId) { idEl.focus(); return; }
+  const d = loadData();
+  d.sellers.push({
+    id: Date.now(),
+    sellerId,
+    name: nameEl ? nameEl.value.trim() : '',
+    attr: attrEl ? attrEl.value : '',
+    note: noteEl ? noteEl.value.trim() : ''
+  });
+  await saveData(d);
+  idEl.value = ''; nameEl.value = ''; if (attrEl) attrEl.value = ''; if (noteEl) noteEl.value = '';
+  idEl.focus();
+  renderSellerRows(d);
+}
+
+function renderSellerRows(d) {
+  const tbody = document.getElementById('sellerTbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (d.sellers.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="6" class="empty-state"><span>👤</span>セラーがまだ登録されていません</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+  d.sellers.forEach((seller, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="row-num">${idx + 1}</td>
+      <td><input type="text" value="${esc(seller.sellerId || '')}" placeholder="A1XXXXX..." data-idx="${idx}" data-field="sellerId" onchange="updateSellerField(this)"></td>
+      <td><input type="text" value="${esc(seller.name || '')}" placeholder="セラー名" data-idx="${idx}" data-field="name" onchange="updateSellerField(this)"></td>
+      <td>${buildAttrSelect(d.attrs, seller.attr, idx)}</td>
+      <td><input type="text" value="${esc(seller.note || '')}" placeholder="メモ..." data-idx="${idx}" data-field="note" onchange="updateSellerField(this)"></td>
+      <td><button class="del-btn" onclick="deleteSellerRow(${idx})" title="削除">×</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function buildAttrSelect(attrs, selected, idx) {
+  const opts = ['', ...attrs].map(a =>
+    `<option value="${esc(a)}" ${a === selected ? 'selected' : ''}>${a || '（未設定）'}</option>`
+  ).join('');
+  return `<select class="attr-select" data-idx="${idx}" data-field="attr" onchange="updateSellerField(this)">${opts}</select>`;
+}
+
+async function deleteSellerRow(idx) {
+  const d = loadData();
+  d.sellers.splice(idx, 1);
+  await saveData(d);
+  renderSellerRows(d);
+}
+
+async function updateSellerField(el) {
+  const d = loadData();
+  const idx = parseInt(el.dataset.idx);
+  const field = el.dataset.field;
+  if (d.sellers[idx]) {
+    d.sellers[idx][field] = el.value;
+    await saveData(d);
+  }
+}
+
+// ── 属性タブ ──
+function buildAttrTab(attr) {
+  const d = loadData();
+  const sellerCount = d.sellers.filter(s => s.attr === attr).length;
+  const sessions = (d.sessions && d.sessions[attr]) || [];
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;';
+
+  const subHdr = document.createElement('div');
+  subHdr.className = 'attr-tab-header';
+  subHdr.innerHTML = `
+    <span class="attr-label">属性：</span>
+    <strong style="color:#e0e0e0;">${esc(attr)}</strong>
+    <span class="seller-count-badge">登録セラー ${sellerCount}件</span>
+    <span id="sellerFetchBadge_${sanitizeId(attr)}" style="font-size:0.72rem;color:#666;margin-left:0.4rem;"></span>
+    <div style="flex:1;"></div>
+    <button class="hdr-btn primary" onclick="fetchAllSellersForAttr('${esc(attr)}')">セラー一括取得</button>
+    <button class="hdr-btn" onclick="refreshAllKeepa('${esc(attr)}')">Keepa一括更新</button>
+  `;
+  wrap.appendChild(subHdr);
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'table-wrap';
+
+  const table = document.createElement('table');
+  table.className = 'data-table';
+  table.id = `attrTable_${sanitizeId(attr)}`;
+
+  const sess1 = sessions[1] || [];
+  const sess2 = sessions[2] || [];
+  const sess3 = sessions[3] || [];
+
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th style="width:36px;">#</th>
+        <th style="width:120px;">今回ASIN<br><button class="col-copy-btn" id="copyBtn0_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',0,this)">コピー</button></th>
+        <th style="width:90px;">商品画像</th>
+        <th style="width:180px;">商品名</th>
+        <th style="width:320px;">Keepaグラフ</th>
+        <th style="width:90px;">新規出品者数</th>
+        <th style="width:60px;">更新</th>
+        <th class="col-sep" style="width:120px;color:#5577aa;">1回前ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess1.length}件</span><br><button class="col-copy-btn" id="copyBtn1_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',1,this)">コピー</button></th>
+        <th style="width:120px;color:#446699;">2回前ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess2.length}件</span><br><button class="col-copy-btn" id="copyBtn2_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',2,this)">コピー</button></th>
+        <th style="width:120px;color:#335588;">3回前ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess3.length}件</span><br><button class="col-copy-btn" id="copyBtn3_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',3,this)">コピー</button></th>
+        <th class="col-sep" style="width:70px;">出現回数</th>
+      </tr>
+    </thead>
+    <tbody id="attrTbody_${sanitizeId(attr)}"></tbody>
+  `;
+  tableWrap.appendChild(table);
+  wrap.appendChild(tableWrap);
+
+  setTimeout(() => renderAttrRows(attr), 0);
+
+  return wrap;
+}
+
+// ── 属性タブの行描画 ──
+function renderAttrRows(attr) {
+  const d = loadData();
+  const sessions = (d.sessions && d.sessions[attr]) || [];
+  const tbodyId = `attrTbody_${sanitizeId(attr)}`;
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const sess0 = sessions[0] || [];
+  const sess1 = sessions[1] || [];
+  const sess2 = sessions[2] || [];
+  const sess3 = sessions[3] || [];
+
+  const maxRows = Math.max(sess0.length, sess1.length, sess2.length, sess3.length);
+
+  if (maxRows === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="11" class="empty-state"><span>📦</span>このタブにはまだデータがありません<br><small style="color:#555;">「セラー一括取得」ボタンでセラーの新着出品を取得してください</small></td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  for (let rowIdx = 0; rowIdx < maxRows; rowIdx++) {
+    const item0 = sess0[rowIdx] || null;
+    const item1 = sess1[rowIdx] || null;
+    const item2 = sess2[rowIdx] || null;
+    const item3 = sess3[rowIdx] || null;
+
+    let appearCount = 0;
+    if (item0) appearCount = calcAppearCount(item0.asin, sessions);
+
+    const isChance = appearCount >= 2;
+
+    const tr = document.createElement('tr');
+    if (isChance) tr.className = 'chance-row';
+
+    const asinCell = item0
+      ? `<a class="asin-link ${isChance ? 'chance-asin' : ''}" href="https://www.amazon.co.jp/dp/${item0.asin}" target="_blank">${item0.asin}</a>`
+      : '<span style="color:#333;">—</span>';
+
+    const imgCell = item0
+      ? (() => {
+          const primaryUrl = item0.imageUrl
+            ? item0.imageUrl
+            : `https://m.media-amazon.com/images/P/${item0.asin}.01._SL200_.jpg`;
+          const fallback1 = `https://images-fe.amazon.co.jp/images/P/${item0.asin}.01._SL200_.jpg`;
+          return `<img class="asin-img" src="${primaryUrl}" alt=""
+            onerror="this.src='${fallback1}';this.onerror=function(){this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>';}">`;
+        })()
+      : '<div class="asin-img-placeholder"></div>';
+
+    const titleCell = item0 && item0.title
+      ? `<span class="product-title" title="${esc(item0.title)}">${esc(item0.title)}</span>`
+      : '<span style="color:#444;font-size:0.75rem;">—</span>';
+
+    const keepaApiKey = loadSettings().keepaApiKey;
+    const keepaCell = item0
+      ? (() => {
+          if (keepaApiKey) {
+            const graphUrl = `https://api.keepa.com/graphimage?key=${encodeURIComponent(keepaApiKey)}&domain=5&asin=${item0.asin}&range=90&salesrank=0&bb=1&amazon=1&new=1&used=1&fba=1`;
+            return `<a class="keepa-graph-link" href="https://keepa.com/#!product/5-${item0.asin}" target="_blank" title="${item0.asin} のKeepaグラフを開く"><img class="keepa-graph-img" src="${graphUrl}" alt="Keepaグラフ" loading="lazy" onerror="this.outerHTML='<a class=\\'keepa-btn\\' href=\\'https://keepa.com/#!product/5-${item0.asin}\\' target=\\'_blank\\'>Keepa</a>'"></a>`;
+          } else {
+            return `<a class="keepa-btn" href="https://keepa.com/#!product/5-${item0.asin}" target="_blank">Keepa</a>`;
+          }
+        })()
+      : '—';
+
+    const sellerCountCell = item0 && item0.newSellerCount !== undefined && item0.newSellerCount !== null
+      ? item0.newSellerCount
+      : '—';
+
+    const safeAttr = esc(attr);
+    const refreshCell = item0
+      ? `<button class="refresh-btn" id="keepaStatus_${sanitizeId(attr)}_${rowIdx}" onclick="refreshKeepaForRow('${safeAttr}', ${rowIdx})">更新</button>`
+      : '—';
+
+    const pastCell = (item) => {
+      if (!item) return '<span style="color:#333;">—</span>';
+      return `<a class="past-col" href="https://www.amazon.co.jp/dp/${item.asin}" target="_blank">${item.asin}</a>`;
+    };
+
+    const appearBadge = item0
+      ? `<span class="appear-count ${appearCount >= 2 ? 'high' : ''}">${appearCount}</span>`
+      : '<span style="color:#333;">—</span>';
+
+    tr.innerHTML = `
+      <td class="row-num">${rowIdx + 1}</td>
+      <td>${asinCell}</td>
+      <td>${imgCell}</td>
+      <td>${titleCell}</td>
+      <td>${keepaCell}</td>
+      <td style="text-align:center;">${sellerCountCell}</td>
+      <td style="text-align:center;">${refreshCell}</td>
+      <td class="col-sep">${pastCell(item1)}</td>
+      <td>${pastCell(item2)}</td>
+      <td>${pastCell(item3)}</td>
+      <td class="col-sep" style="text-align:center;">${appearBadge}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+// ── 単行のKeepaデータ更新 ──
+async function refreshKeepaForRow(attr, rowIdx) {
+  const d = loadData();
+  const sessions = d.sessions && d.sessions[attr];
+  if (!sessions || !sessions[0] || !sessions[0][rowIdx]) return;
+  const item = sessions[0][rowIdx];
+  if (!item.asin) return;
+
+  const statusEl = document.getElementById(`keepaStatus_${sanitizeId(attr)}_${rowIdx}`);
+
+  if (statusEl) {
+    if (statusEl.disabled) return;
+    statusEl.disabled = true;
+    setTimeout(() => { if (statusEl) statusEl.disabled = false; }, 3000);
+    statusEl.textContent = '取得中…';
+    statusEl.style.color = '#aaa';
+  }
+
+  const result = await fetchKeepaData(item.asin);
+  if (result.error) {
+    console.error('[Keepa個別更新] ASIN:', item.asin, 'Error:', result.error);
+    if (statusEl) {
+      const is429 = result.error === 'HTTP 429';
+      if (is429) {
+        statusEl.textContent = '制限中...';
+        statusEl.title = 'レート制限中。10秒後に自動リトライします。';
+        statusEl.style.color = '#f5a623';
+        setTimeout(() => {
+          if (statusEl) { statusEl.disabled = false; statusEl.textContent = '更新'; statusEl.style.color = ''; }
+          refreshKeepaForRow(attr, rowIdx);
+        }, 10000);
+      } else {
+        const label = result.error === 'APIキー未設定' ? 'キー未設定'
+                    : result.error === '商品データなし' ? 'データなし'
+                    : result.error.startsWith('HTTP') ? result.error
+                    : `失敗: ${result.error.slice(0, 30)}`;
+        statusEl.textContent = label;
+        statusEl.title = result.error;
+        statusEl.style.color = '#f87171';
+      }
+    }
+    return;
+  }
+
+  const d2 = loadData();
+  const target = d2.sessions && d2.sessions[attr] && d2.sessions[attr][0] && d2.sessions[attr][0][rowIdx];
+  if (!target) return;
+  if (result.newSellerCount !== null) target.newSellerCount = result.newSellerCount;
+  if (result.title) target.title = result.title;
+  if (result.imageUrl) target.imageUrl = result.imageUrl;
+  if (!d2.keepaCache) d2.keepaCache = {};
+  d2.keepaCache[item.asin] = {
+    title: result.title || target.title,
+    newSellerCount: result.newSellerCount !== null ? result.newSellerCount : target.newSellerCount,
+    imageUrl: result.imageUrl || target.imageUrl
+  };
+  await saveData(d2);
+  renderAttrRows(attr);
+}
+
+// ── 属性管理モーダル ──
+function openAttrMgr() {
+  const d = loadData();
+  const list = document.getElementById('attrMgrList');
+  list.innerHTML = '';
+  d.attrs.forEach(attr => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;';
+    row.innerHTML = `
+      <span style="flex:1;color:#ccc;font-size:0.9rem;">${esc(attr)}</span>
+      <button class="btn-danger" style="padding:0.2rem 0.6rem;font-size:0.75rem;" onclick="removeAttrFromMgr('${esc(attr)}')">削除</button>
+    `;
+    list.appendChild(row);
+  });
+  document.getElementById('attrMgrModal').classList.remove('hidden');
+  document.getElementById('newAttrInput').value = '';
+  document.getElementById('newAttrInput').focus();
+}
+
+function closeAttrMgr() {
+  document.getElementById('attrMgrModal').classList.add('hidden');
+}
+
+async function addAttr() {
+  const input = document.getElementById('newAttrInput');
+  const name = input.value.trim();
+  if (!name) return;
+  const d = loadData();
+  if (d.attrs.includes(name)) { alert('すでに存在する属性名です'); return; }
+  d.attrs.push(name);
+  await saveData(d);
+  closeAttrMgr();
+  renderTabs();
+  showTab(name);
+}
+
+async function removeAttrFromMgr(attr) {
+  if (!confirm(`「${attr}」を削除しますか？\n（このタブに登録されたデータも削除されます）`)) return;
+  const d = loadData();
+  d.attrs = d.attrs.filter(a => a !== attr);
+  delete d.sessions[attr];
+  if (currentTab === attr) currentTab = 'sellers';
+  await saveData(d);
+  closeAttrMgr();
+  renderTabs();
+  showTab(currentTab);
+}
+
+// ── 列ごとASINコピー ──
+function copySessionAsins(attr, sessIdx, btnEl) {
+  const d = loadData();
+  const sessions = (d.sessions && d.sessions[attr]) || [];
+  const sess = sessions[sessIdx] || [];
+  const asinList = sess.map(item => item.asin).filter(Boolean);
+  if (asinList.length === 0) {
+    alert('この列にコピーできるASINがありません。');
+    return;
+  }
+  const text = asinList.join('\n');
+  const showDone = (btn) => {
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    btn.style.color = '#4caf50';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
+  };
+  navigator.clipboard.writeText(text).then(() => {
+    showDone(btnEl);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showDone(btnEl);
+  });
+}
+
+// ── ユーティリティ ──
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function sanitizeId(str) {
+  try { return btoa(unescape(encodeURIComponent(str))).replace(/[^a-zA-Z0-9]/g, ''); } catch(e) { return str.replace(/[^a-zA-Z0-9_]/g, '_'); }
+}
+function renderAll() { renderTabs(); showTab(currentTab); }
+
+// ── 起動 ──
+init().then(() => {
+  document.getElementById('newAttrInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addAttr();
+    if (e.key === 'Escape') closeAttrMgr();
+  });
+
+  document.getElementById('keepaApiKeyInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') saveSettings();
+    if (e.key === 'Escape') closeSettings();
+  });
+});
+</script>
+</body>
+</html>
