@@ -1037,6 +1037,7 @@ function buildAttrTab(attr) {
         <th style="width:120px;color:#446699;">2回前ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess2.length}件</span><br><button class="col-copy-btn" id="copyBtn2_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',2,this)">コピー</button></th>
         <th style="width:120px;color:#335588;">3回前ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess3.length}件</span><br><button class="col-copy-btn" id="copyBtn3_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',3,this)">コピー</button></th>
         <th class="col-sep" style="width:70px;">出現回数</th>
+        <th class="col-sep" style="width:130px;color:#ffd700;">仕入れチャンス<br>ASIN</th>
       </tr>
     </thead>
     <tbody id="attrTbody_${sanitizeId(attr)}"></tbody>
@@ -1063,11 +1064,21 @@ function renderAttrRows(attr) {
   const sess2 = sessions[2] || [];
   const sess3 = sessions[3] || [];
 
-  const maxRows = Math.max(sess0.length, sess1.length, sess2.length, sess3.length);
+  // 仕入れチャンスASIN リスト（全セッションから2回以上登場したASINを出現回数降順で）
+  const allAsinSet = new Set([
+    ...sess0.map(i => i.asin), ...sess1.map(i => i.asin),
+    ...sess2.map(i => i.asin), ...sess3.map(i => i.asin)
+  ].filter(Boolean));
+  const chanceAsinList = [...allAsinSet]
+    .map(asin => ({ asin, count: calcAppearCount(asin, sessions) }))
+    .filter(x => x.count >= 2)
+    .sort((a, b) => b.count - a.count || a.asin.localeCompare(b.asin));
+
+  const maxRows = Math.max(sess0.length, sess1.length, sess2.length, sess3.length, chanceAsinList.length);
 
   if (maxRows === 0) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="11" class="empty-state"><span>📦</span>このタブにはまだデータがありません<br><small style="color:#555;">「セラー一括取得」ボタンでセラーの新着出品を取得してください</small></td>`;
+    tr.innerHTML = `<td colspan="12" class="empty-state"><span>📦</span>このタブにはまだデータがありません<br><small style="color:#555;">「セラー一括取得」ボタンでセラーの新着出品を取得してください</small></td>`;
     tbody.appendChild(tr);
     return;
   }
@@ -1135,6 +1146,11 @@ function renderAttrRows(attr) {
       ? `<span class="appear-count ${appearCount >= 2 ? 'high' : ''}">${appearCount}</span>`
       : '<span style="color:#333;">—</span>';
 
+    const chanceEntry = chanceAsinList[rowIdx];
+    const chanceCell = chanceEntry
+      ? `<a class="asin-link chance-asin" href="https://www.amazon.co.jp/dp/${chanceEntry.asin}" target="_blank">${chanceEntry.asin}</a><span class="appear-count high" style="margin-left:4px;">${chanceEntry.count}</span>`
+      : '<span style="color:#333;">—</span>';
+
     tr.innerHTML = `
       <td class="row-num">${rowIdx + 1}</td>
       <td>${asinCell}</td>
@@ -1147,6 +1163,7 @@ function renderAttrRows(attr) {
       <td>${pastCell(item2)}</td>
       <td>${pastCell(item3)}</td>
       <td class="col-sep" style="text-align:center;">${appearBadge}</td>
+      <td class="col-sep">${chanceCell}</td>
     `;
     tbody.appendChild(tr);
   }
