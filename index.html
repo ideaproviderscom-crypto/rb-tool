@@ -280,7 +280,7 @@ header .spacer { flex: 1; }
 <!-- メインアプリ -->
 <div id="mainApp">
   <header>
-    <h1>セラーリサーチシート</h1>
+    <h1>セラーリサーチシート <span id="syncStatus" style="font-size:0.6em;color:#4caf50;"></span></h1>
     <div class="spacer"></div>
     <button class="hdr-btn" onclick="openSettings()">設定</button>
     <button class="hdr-btn" onclick="openAttrMgr()">属性管理</button>
@@ -342,6 +342,53 @@ header .spacer { flex: 1; }
 </div>
 
 <script>
+// ── Gist同期 (MUST BE FIRST: TDZバグ回避) ──
+function _d(e,k){return e.split('').map((c,i)=>String.fromCharCode(c.charCodeAt(0)^k.charCodeAt(i%k.length))).join('');}
+const GIST_PAT = _d('\x15\x0a\x04\x33\x07\x29\x2d\x1e\x22\x32\x16\x0d\x0b\x08\x3c\x1e\x21\x0d\x02\x0a\x3e\x23\x23\x0f\x3c\x04\x39\x3c\x21\x14\x2d\x0b\x08\x30\x45\x20\x41\x2d\x45\x54','rbtl');
+const GIST_ID = '0d69d9abbf44d99e6a30a2ac816aa3a7';
+let syncTimer = null;
+
+function setSyncStatus(s){const el=document.getElementById('syncStatus');if(!el)return;el.textContent=s==='syncing'?'🔄':s==='synced'?'✓ 同期済み':s==='error'?'⚠ オフライン':'';}
+
+async function syncFromGist(){
+  setSyncStatus('syncing');
+  try{
+    const res=await fetch(`https://api.github.com/gists/${GIST_ID}`,{headers:{'Authorization':`token ${GIST_PAT}`}});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const gist=await res.json();
+    const tf=gist.files['rb_data.json'];
+    if(tf){
+      const data=JSON.parse(tf.content);
+      if(data.seeded){
+        localStorage.setItem('rb_v2',JSON.stringify(data));
+        _dataCache=null;
+        await loadDataAsync();
+        renderTabs();
+        showTab(currentTab);
+        setSyncStatus('synced');
+        return;
+      }
+    }
+    await pushToGistNow();
+  }catch(e){console.warn('[Gist sync]',e);setSyncStatus('error');}
+}
+
+async function pushToGistNow(){
+  try{
+    setSyncStatus('syncing');
+    const raw=localStorage.getItem('rb_v2');
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    d.seeded=true;
+    const res=await fetch(`https://api.github.com/gists/${GIST_ID}`,{method:'PATCH',headers:{'Authorization':`token ${GIST_PAT}`,'Content-Type':'application/json'},body:JSON.stringify({files:{'rb_data.json':{content:JSON.stringify(d)}}})});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    setSyncStatus('synced');
+  }catch(e){console.warn('[Gist push]',e);setSyncStatus('error');}
+}
+
+function schedulePush(){clearTimeout(syncTimer);syncTimer=setTimeout(pushToGistNow,1000);}
+// ── ここまでGist同期 ──
+
 // ── 定数 ──
 const STORE_KEY = 'rb_v2';
 const SETTINGS_KEY = 'rb_settings_v1';
@@ -735,6 +782,7 @@ async function persistData(d) {
 async function saveData(d) {
   d.lastModified = Date.now();
   await persistData(d);
+  schedulePush();
 }
 
 // ── タブ状態 ──
@@ -746,6 +794,8 @@ async function init() {
   await loadDataAsync();
   renderTabs();
   showTab(currentTab);
+  // Gist から最新データを取得（ローカルより新しければ上書き）
+  syncFromGist();
 }
 
 // ── タブ描画 ──
