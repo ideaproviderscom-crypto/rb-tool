@@ -443,9 +443,14 @@ async function fetchKeepaData(asin) {
     const title = p.title || null;
     let imageUrl = null;
     if (p.imagesCSV) {
-      const firstImageId = p.imagesCSV.split(',')[0];
+      const firstImageId = p.imagesCSV.split(',')[0].trim();
       if (firstImageId) imageUrl = `https://m.media-amazon.com/images/I/${firstImageId}._SL200_.jpg`;
     }
+    // imagesCSV がない場合は ASIN ベース URL をフォールバックとして必ず設定
+    if (!imageUrl) {
+      imageUrl = `https://m.media-amazon.com/images/P/${asin}.09._SL200_.jpg`;
+    }
+    console.log('[Keepa] ASIN:', asin, 'imagesCSV:', p.imagesCSV, 'imageUrl:', imageUrl);
     return { newSellerCount, title, imageUrl };
   } catch(e) {
     return { error: e.message };
@@ -637,12 +642,12 @@ async function refreshAllKeepa(attr) {
         const target = d2.sessions[attr][0][i];
         if (result.newSellerCount !== null) target.newSellerCount = result.newSellerCount;
         if (result.title) target.title = result.title;
-        if (result.imageUrl) target.imageUrl = result.imageUrl;
+        target.imageUrl = result.imageUrl || target.imageUrl;
         if (!d2.keepaCache) d2.keepaCache = {};
         d2.keepaCache[item.asin] = {
           title: result.title || target.title,
           newSellerCount: result.newSellerCount !== null ? result.newSellerCount : target.newSellerCount,
-          imageUrl: result.imageUrl || target.imageUrl
+          imageUrl: target.imageUrl
         };
         await saveData(d2);
       }
@@ -1087,12 +1092,12 @@ function renderAttrRows(attr) {
 
     const imgCell = item0
       ? (() => {
-          const primaryUrl = item0.imageUrl
-            ? item0.imageUrl
-            : `https://m.media-amazon.com/images/P/${item0.asin}.01._SL200_.jpg`;
-          const fallback1 = `https://images-fe.amazon.co.jp/images/P/${item0.asin}.01._SL200_.jpg`;
-          return `<img class="asin-img" src="${primaryUrl}" alt=""
-            onerror="this.src='${fallback1}';this.onerror=function(){this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>';}">`;
+          const primaryUrl = item0.imageUrl || `https://m.media-amazon.com/images/P/${item0.asin}.09._SL200_.jpg`;
+          const fallback1 = `https://m.media-amazon.com/images/P/${item0.asin}.01._SL200_.jpg`;
+          const fallback2 = `https://images-fe.amazon.co.jp/images/P/${item0.asin}.01._SL200_.jpg`;
+          const fallback3 = `https://images-na.ssl-images-amazon.com/images/P/${item0.asin}.01._SL200_.jpg`;
+          return `<img class="asin-img" src="${primaryUrl}" alt="" title="${item0.asin}"
+            onerror="if(this.dataset.fb==='1'){this.dataset.fb='2';this.src='${fallback2}';}else if(this.dataset.fb==='2'){this.dataset.fb='3';this.src='${fallback3}';}else if(this.dataset.fb==='3'){this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>';}else{this.dataset.fb='1';this.src='${fallback1}';}">`;
         })()
       : '<div class="asin-img-placeholder"></div>';
 
@@ -1196,12 +1201,12 @@ async function refreshKeepaForRow(attr, rowIdx) {
   if (!target) return;
   if (result.newSellerCount !== null) target.newSellerCount = result.newSellerCount;
   if (result.title) target.title = result.title;
-  if (result.imageUrl) target.imageUrl = result.imageUrl;
+  target.imageUrl = result.imageUrl || target.imageUrl;
   if (!d2.keepaCache) d2.keepaCache = {};
   d2.keepaCache[item.asin] = {
     title: result.title || target.title,
     newSellerCount: result.newSellerCount !== null ? result.newSellerCount : target.newSellerCount,
-    imageUrl: result.imageUrl || target.imageUrl
+    imageUrl: target.imageUrl
   };
   await saveData(d2);
   renderAttrRows(attr);
