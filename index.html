@@ -1182,7 +1182,7 @@ function renderAttrRows(attr) {
 
     const imgCell = (item0 && item0.imageUrl)
       ? `<img class="asin-img" src="${item0.imageUrl}" alt="" title="${item0.asin}" onerror="this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>'" onload="if(this.naturalWidth<=1||this.naturalHeight<=1)this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>'">`
-      : '<div class="asin-img-placeholder"></div>';
+      : (item0 ? `<div class="asin-img-placeholder" data-asin="${item0.asin}" data-attr="${esc(attr)}"></div>` : '<div class="asin-img-placeholder"></div>');
 
     const titleCell = item0 && item0.title
       ? `<span class="product-title" title="${esc(item0.title)}">${esc(item0.title)}</span>`
@@ -1239,6 +1239,53 @@ function renderAttrRows(attr) {
     `;
     tbody.appendChild(tr);
   }
+
+  // 画像が未取得の行を IntersectionObserver で遅延自動ロード
+  setupImageLazyLoad(attr);
+}
+
+// ── 画像遅延ロード（IntersectionObserver）──
+let _imgObserver = null;
+const _pendingImg = new Set();
+
+function setupImageLazyLoad(attr) {
+  if (!loadSettings().keepaApiKey) return;
+  if (_imgObserver) _imgObserver.disconnect();
+  _imgObserver = new IntersectionObserver(async (entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const el = entry.target;
+      const asin = el.dataset.asin;
+      if (!asin || _pendingImg.has(asin)) continue;
+      _pendingImg.add(asin);
+      _imgObserver.unobserve(el);
+      const result = await fetchKeepaData(asin);
+      if (!result.error && result.imageUrl) {
+        // データ保存
+        const d2 = loadData();
+        const attrKey = el.dataset.attr;
+        const sess = d2.sessions && d2.sessions[attrKey] && d2.sessions[attrKey][0];
+        if (sess) {
+          const it = sess.find(i => i.asin === asin);
+          if (it) {
+            it.imageUrl = result.imageUrl;
+            if (result.title && !it.title) it.title = result.title;
+          }
+        }
+        if (!d2.keepaCache) d2.keepaCache = {};
+        if (!d2.keepaCache[asin]) d2.keepaCache[asin] = {};
+        d2.keepaCache[asin].imageUrl = result.imageUrl;
+        if (result.title) d2.keepaCache[asin].title = result.title;
+        await saveData(d2);
+        // DOM更新（プレースホルダー→画像）
+        const still = document.querySelector(`.asin-img-placeholder[data-asin="${asin}"]`);
+        if (still) still.outerHTML = `<img class="asin-img" src="${result.imageUrl}" alt="" title="${asin}" onerror="this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>'" onload="if(this.naturalWidth<=1||this.naturalHeight<=1)this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>'">`;
+      }
+      await new Promise(r => setTimeout(r, 1200));
+      _pendingImg.delete(asin);
+    }
+  }, { rootMargin: '300px 0px' });
+  document.querySelectorAll('.asin-img-placeholder[data-asin]').forEach(el => _imgObserver.observe(el));
 }
 
 // ── 単行のKeepaデータ更新 ──
