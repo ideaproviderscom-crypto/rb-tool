@@ -511,17 +511,21 @@ async function fetchKeepaData(asin) {
     const newSellerCount = null;
     const title = p.title || null;
     let imageUrl = null;
+    // 方法1: imagesCSV（旧形式）
     if (p.imagesCSV) {
-      // imagesCSV はカンマ区切りの画像ID列。最初の有効なIDで /images/I/ 形式のURLを構築
       const ids = p.imagesCSV.split(',');
       for (const rawId of ids) {
         const id = rawId.trim();
-        // 有効なAmazon画像IDは英数字のみ（8文字以上）
         if (id && /^[A-Za-z0-9+]{8,}$/.test(id)) {
           imageUrl = `https://m.media-amazon.com/images/I/${id}._SL200_.jpg`;
           break;
         }
       }
+    }
+    // 方法2: images配列（新形式）— 拡張子を除去してから付け直す
+    if (!imageUrl && p.images && p.images.length > 0) {
+      const imgFile = (p.images[0].l || p.images[0].m || '').replace(/\.[^.]+$/, '');
+      if (imgFile) imageUrl = `https://m.media-amazon.com/images/I/${imgFile}._SL200_.jpg`;
     }
     // /images/P/{asin} 形式は1x1ダミー画像を返すため使用しない
     // imageUrl が取れない場合は null のまま（プレースホルダー表示）
