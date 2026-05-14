@@ -402,6 +402,9 @@ async function pushToGistNow(){
     if(!raw)return;
     const d=JSON.parse(raw);
     d.seeded=true;
+    // Keepa APIキーをGistに含める（深夜自動更新スクリプト用）
+    const settings=loadSettings();
+    if(settings.keepaApiKey) d._keepaApiKey=settings.keepaApiKey;
     const res=await fetch(`https://api.github.com/gists/${GIST_ID}`,{method:'PATCH',headers:{'Authorization':`token ${GIST_PAT}`,'Content-Type':'application/json'},body:JSON.stringify({files:{'rb_data.json':{content:JSON.stringify(d)}}})});
     if(!res.ok)throw new Error(`HTTP ${res.status}`);
     setSyncStatus('synced');
@@ -626,6 +629,21 @@ async function fetchSellerStorefront(sellerId) {
   }
 }
 
+// ── Keepaトークン待機 ──
+async function waitForKeepaTokens(key, needed, badge, label) {
+  while (true) {
+    try {
+      const res = await fetch(`https://api.keepa.com/token?key=${encodeURIComponent(key)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.tokensLeft >= needed) return;
+      const waitSec = Math.ceil((needed - data.tokensLeft) / (data.refillRate || 5) * 60) + 10;
+      if (badge) badge.textContent = `トークン補充待ち… ${data.tokensLeft}/${needed} (約${waitSec}秒) ${label}`;
+      await new Promise(r => setTimeout(r, 5000));
+    } catch(e) { return; }
+  }
+}
+
 // ── セラー一括取得 ──
 async function fetchAllSellersForAttr(attr) {
   const s = loadSettings();
@@ -648,6 +666,8 @@ async function fetchAllSellersForAttr(attr) {
 
   for (let i = 0; i < sellers.length; i++) {
     const seller = sellers[i];
+    // トークンが6以上になるまで待機してから取得
+    await waitForKeepaTokens(s.keepaApiKey, 6, badge, `(${i+1}/${sellers.length})`);
     if (badge) { badge.textContent = `取得中… (${i+1}/${sellers.length}) ${seller.name || seller.sellerId}`; }
 
     const result = await fetchSellerStorefront(seller.sellerId);
@@ -659,8 +679,6 @@ async function fetchAllSellersForAttr(attr) {
         if (/^[A-Z0-9]{10}$/.test(asin)) newAsinSet.add(asin);
       }
     }
-
-    if (i < sellers.length - 1) await new Promise(r => setTimeout(r, 800));
   }
 
   const newSession = Array.from(newAsinSet).map(asin => ({ asin }));
