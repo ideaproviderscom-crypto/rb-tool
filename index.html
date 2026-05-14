@@ -490,13 +490,19 @@ async function fetchKeepaData(asin) {
     const title = p.title || null;
     let imageUrl = null;
     if (p.imagesCSV) {
-      const firstImageId = p.imagesCSV.split(',')[0].trim();
-      if (firstImageId) imageUrl = `https://m.media-amazon.com/images/I/${firstImageId}._SL200_.jpg`;
+      // imagesCSV はカンマ区切りの画像ID列。最初の有効なIDで /images/I/ 形式のURLを構築
+      const ids = p.imagesCSV.split(',');
+      for (const rawId of ids) {
+        const id = rawId.trim();
+        // 有効なAmazon画像IDは英数字のみ（8文字以上）
+        if (id && /^[A-Za-z0-9+]{8,}$/.test(id)) {
+          imageUrl = `https://m.media-amazon.com/images/I/${id}._SL200_.jpg`;
+          break;
+        }
+      }
     }
-    // imagesCSV がない場合は ASIN ベース URL をフォールバックとして必ず設定
-    if (!imageUrl) {
-      imageUrl = `https://m.media-amazon.com/images/P/${asin}.09._SL200_.jpg`;
-    }
+    // /images/P/{asin} 形式は1x1ダミー画像を返すため使用しない
+    // imageUrl が取れない場合は null のまま（プレースホルダー表示）
     console.log('[Keepa] ASIN:', asin, 'imagesCSV:', p.imagesCSV, 'imageUrl:', imageUrl);
     return { newSellerCount, title, imageUrl };
   } catch(e) {
@@ -1151,15 +1157,8 @@ function renderAttrRows(attr) {
       ? `<a class="asin-link ${isChance ? 'chance-asin' : ''}" href="https://www.amazon.co.jp/dp/${item0.asin}" target="_blank">${item0.asin}</a>`
       : '<span style="color:#333;">—</span>';
 
-    const imgCell = item0
-      ? (() => {
-          const primaryUrl = item0.imageUrl || `https://m.media-amazon.com/images/P/${item0.asin}.09._SL200_.jpg`;
-          const fallback1 = `https://m.media-amazon.com/images/P/${item0.asin}.01._SL200_.jpg`;
-          const fallback2 = `https://images-fe.amazon.co.jp/images/P/${item0.asin}.01._SL200_.jpg`;
-          const fallback3 = `https://images-na.ssl-images-amazon.com/images/P/${item0.asin}.01._SL200_.jpg`;
-          return `<img class="asin-img" src="${primaryUrl}" alt="" title="${item0.asin}"
-            onerror="if(this.dataset.fb==='1'){this.dataset.fb='2';this.src='${fallback2}';}else if(this.dataset.fb==='2'){this.dataset.fb='3';this.src='${fallback3}';}else if(this.dataset.fb==='3'){this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>';}else{this.dataset.fb='1';this.src='${fallback1}';}">`;
-        })()
+    const imgCell = (item0 && item0.imageUrl)
+      ? `<img class="asin-img" src="${item0.imageUrl}" alt="" title="${item0.asin}" onerror="this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>'">`
       : '<div class="asin-img-placeholder"></div>';
 
     const titleCell = item0 && item0.title
