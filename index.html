@@ -685,9 +685,18 @@ async function fetchAllSellersForAttr(attr) {
 
   const d2 = loadData();
   if (!d2.sessions) d2.sessions = {};
+  if (!d2.sessionDates) d2.sessionDates = {};
+  const today = new Date().toISOString().slice(0, 10);
   const prevSessions = d2.sessions[attr] || [];
-  const updated = [newSession, ...prevSessions].slice(0, 4);
-  d2.sessions[attr] = updated;
+  const prevDates = d2.sessionDates[attr] || [];
+  // 同日の場合は先頭を上書き、別日なら追加（最大4件）
+  if (prevDates[0] === today) {
+    d2.sessions[attr] = [newSession, ...prevSessions.slice(1)].slice(0, 4);
+    d2.sessionDates[attr] = [today, ...prevDates.slice(1)].slice(0, 4);
+  } else {
+    d2.sessions[attr] = [newSession, ...prevSessions].slice(0, 4);
+    d2.sessionDates[attr] = [today, ...prevDates].slice(0, 4);
+  }
 
   if (!d2.keepaCache) d2.keepaCache = {};
   for (const item of newSession) {
@@ -1123,6 +1132,15 @@ function buildAttrTab(attr) {
   const sess1 = sessions[1] || [];
   const sess2 = sessions[2] || [];
   const sess3 = sessions[3] || [];
+  const sessionDates = (d.sessionDates && d.sessionDates[attr]) || [];
+  function dayLabel(idx) {
+    const date = sessionDates[idx];
+    if (!date) return `${idx}日前`;
+    const today = new Date().toISOString().slice(0, 10);
+    const diff = Math.round((new Date(today) - new Date(date)) / 86400000);
+    if (diff === 0) return '今日';
+    return `${diff}日前`;
+  }
 
   table.innerHTML = `
     <thead>
@@ -1134,9 +1152,9 @@ function buildAttrTab(attr) {
         <th style="width:320px;">Keepaグラフ</th>
         <th style="width:90px;">新規出品者数</th>
         <th style="width:60px;">更新</th>
-        <th class="col-sep" style="width:120px;color:#5577aa;">1回前ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess1.length}件</span><br><button class="col-copy-btn" id="copyBtn1_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',1,this)">コピー</button></th>
-        <th style="width:120px;color:#446699;">2回前ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess2.length}件</span><br><button class="col-copy-btn" id="copyBtn2_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',2,this)">コピー</button></th>
-        <th style="width:120px;color:#335588;">3回前ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess3.length}件</span><br><button class="col-copy-btn" id="copyBtn3_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',3,this)">コピー</button></th>
+        <th class="col-sep" style="width:120px;color:#5577aa;">${dayLabel(1)} ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess1.length}件</span><br><button class="col-copy-btn" id="copyBtn1_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',1,this)">コピー</button></th>
+        <th style="width:120px;color:#446699;">${dayLabel(2)} ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess2.length}件</span><br><button class="col-copy-btn" id="copyBtn2_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',2,this)">コピー</button></th>
+        <th style="width:120px;color:#335588;">${dayLabel(3)} ASIN<br><span style="font-size:0.65rem;font-weight:normal;color:#445;">${sess3.length}件</span><br><button class="col-copy-btn" id="copyBtn3_${sanitizeId(attr)}" onclick="copySessionAsins('${esc(attr)}',3,this)">コピー</button></th>
         <th class="col-sep" style="width:70px;">出現回数</th>
         <th class="col-sep" style="width:130px;color:#ffd700;">仕入れチャンス<br>ASIN</th>
       </tr>
