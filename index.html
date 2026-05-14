@@ -350,6 +350,27 @@ let syncTimer = null;
 
 function setSyncStatus(s){const el=document.getElementById('syncStatus');if(!el)return;el.textContent=s==='syncing'?'🔄':s==='synced'?'✓ 同期済み':s==='error'?'⚠ オフライン':'';}
 
+// /images/P/ 形式の1x1ダミーURLを除去するマイグレーション
+function migrateImageUrls() {
+  const raw = localStorage.getItem('rb_v2');
+  if (!raw) return false;
+  const data = JSON.parse(raw);
+  let changed = 0;
+  for (const attr of Object.keys(data.sessions || {})) {
+    for (const sess of data.sessions[attr]) {
+      for (const item of sess) {
+        if (item.imageUrl && item.imageUrl.includes('/images/P/')) { item.imageUrl = null; changed++; }
+      }
+    }
+  }
+  for (const asin of Object.keys(data.keepaCache || {})) {
+    const c = data.keepaCache[asin];
+    if (c.imageUrl && c.imageUrl.includes('/images/P/')) { c.imageUrl = null; changed++; }
+  }
+  if (changed > 0) { localStorage.setItem('rb_v2', JSON.stringify(data)); console.log(`[migrate] /images/P/ を ${changed}件 nullに変換`); }
+  return changed > 0;
+}
+
 async function syncFromGist(){
   setSyncStatus('syncing');
   try{
@@ -362,6 +383,7 @@ async function syncFromGist(){
       if(data.seeded){
         localStorage.setItem('rb_v2',JSON.stringify(data));
         _dataCache=null;
+        migrateImageUrls();
         await loadDataAsync();
         renderTabs();
         showTab(currentTab);
@@ -798,6 +820,7 @@ let currentTab = 'sellers';
 async function init() {
   // IndexedDB から最新データを読み込んでから描画
   await loadDataAsync();
+  migrateImageUrls();
   renderTabs();
   showTab(currentTab);
   // Gist から最新データを取得（ローカルより新しければ上書き）
@@ -1158,7 +1181,7 @@ function renderAttrRows(attr) {
       : '<span style="color:#333;">—</span>';
 
     const imgCell = (item0 && item0.imageUrl)
-      ? `<img class="asin-img" src="${item0.imageUrl}" alt="" title="${item0.asin}" onerror="this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>'">`
+      ? `<img class="asin-img" src="${item0.imageUrl}" alt="" title="${item0.asin}" onerror="this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>'" onload="if(this.naturalWidth<=1||this.naturalHeight<=1)this.outerHTML='<div class=\\'asin-img-placeholder\\'></div>'">`
       : '<div class="asin-img-placeholder"></div>';
 
     const titleCell = item0 && item0.title
