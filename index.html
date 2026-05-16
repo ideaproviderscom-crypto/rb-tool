@@ -675,8 +675,20 @@ async function fetchAllSellersForAttr(attr) {
       console.warn('[Storefront] error for', seller.sellerId, result.error);
       errCount++;
     } else {
-      for (const asin of result.asinList) {
-        if (/^[A-Z0-9]{10}$/.test(asin)) newAsinSet.add(asin);
+      const asinSet = new Set(result.asinList.filter(a => /^[A-Z0-9]{10}$/.test(a)));
+      if (!seller.baselineAsins) {
+        // 初回：ベースラインを設定してセッションには追加しない
+        seller.baselineAsins = [...asinSet];
+        const dTmp = loadData();
+        const idx = dTmp.sellers.findIndex(s => s.sellerId === seller.sellerId);
+        if (idx !== -1) dTmp.sellers[idx].baselineAsins = seller.baselineAsins;
+        await saveData(dTmp);
+      } else {
+        // 2回目以降：ベースライン差分のみ追加
+        const baseline = new Set(seller.baselineAsins);
+        for (const asin of asinSet) {
+          if (!baseline.has(asin)) newAsinSet.add(asin);
+        }
       }
     }
   }
